@@ -995,9 +995,10 @@ void ImpProblem::validate() {
     tr_loss = param->item_weight? tr_loss_t/n : tr_loss_t/U->M.size();
 
     ImpDouble ploss = 0;
-    ImpDouble gauc_sum = 0, gauc_all_sum = 0;
-    ImpDouble gauc_all_weight_sum = 0, gauc_weight_sum = 0;
-    #pragma omp parallel for schedule(dynamic) reduction(+: valid_samples, ploss, gauc_all_sum, gauc_sum, gauc_all_weight_sum, gauc_weight_sum)
+    //ImpDouble gauc_sum = 0, gauc_all_sum = 0;
+    //ImpDouble gauc_all_weight_sum = 0, gauc_weight_sum = 0;
+    //#pragma omp parallel for schedule(dynamic) reduction(+: valid_samples, ploss, gauc_all_sum, gauc_sum, gauc_all_weight_sum, gauc_weight_sum)
+    #pragma omp parallel for schedule(dynamic) reduction(+: valid_samples, ploss)
     for (ImpLong i = 0; i < Uva->m; i++) {
         Vec z_copy, z(bt);
 
@@ -1015,7 +1016,7 @@ void ImpProblem::validate() {
                 ploss += w2 * log1p( exp(-yy) );
         }
         
-        ImpDouble gauc_i = calc_gauc_i(z, i, true);
+        /***ImpDouble gauc_i = calc_gauc_i(z, i, true);
         if( gauc_i != -1 ){
             gauc_all_sum += gauc_i;
             gauc_all_weight_sum += 1;
@@ -1025,15 +1026,15 @@ void ImpProblem::validate() {
             gauc_sum += gauc_i * (ImpDouble)(Uva->Y[i+1] - Uva->Y[i]);
             gauc_weight_sum += (Uva->Y[i+1] - Uva->Y[i]);
         }
-
+        ***/
         z_copy.assign(z.begin(), z.end());
         prec_k(z.data(), i, top_k, hit_counts);
         ndcg(z_copy.data(), i, ndcg_scores);
         valid_samples++;
     }
 
-    gauc_all = gauc_all_sum / gauc_all_weight_sum;
-    gauc = gauc_sum / gauc_weight_sum;
+    //gauc_all = gauc_all_sum / gauc_all_weight_sum;
+    //gauc = gauc_sum / gauc_weight_sum;
     loss = ploss/Uva->M.size();
 
     fill(va_loss_prec.begin(), va_loss_prec.end(), 0);
@@ -1220,10 +1221,9 @@ void ImpProblem::print_epoch_info(ImpInt t) {
     ImpInt nr_k = top_k.size();
     cout.width(2);
     cout << t+1 << " ";
-    if (!Uva->file_name.empty() && (t+1) % 2 == 0){
+    if (!Uva->file_name.empty() && (t+1) % 1 == 0){
         init_Pva_Qva_at_bt();
-        logloss();
-        calc_auc();
+        validate();
         for (ImpInt i = 0; i < nr_k; i++ ) {
             cout.width(9);
             cout << "( " <<setprecision(3) << va_loss_prec[i]*100 << " ,";
