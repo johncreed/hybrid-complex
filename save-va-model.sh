@@ -11,7 +11,7 @@ c=5
 
 # Data setr
 tr='tr.ffm'
-imp_va='imp_va.ffm'
+imp_tr='imp_tr.ffm'
 item='item.ffm'
 
 # Log path
@@ -28,14 +28,14 @@ l=16
 w=1e-4
 r=-5
 t=49
-model_name="$l.$w.$r.$t.${imp_va}.model"
+model_name="$l.$w.$r.$t.${imp_tr}.model"
 cmd=${train_cmd}
 cmd="${cmd} -l ${l}"
 cmd="${cmd} -w ${w}"
 cmd="${cmd} -r ${r}"
 cmd="${cmd} -t ${t}"
 cmd="${cmd} -save-imp ${log_path}/${model_name}"
-echo "${cmd} -p ${imp_va} ${item} ${tr} > ${log_path}/$l.$w.$r.log"
+echo "${cmd} -p ${imp_tr} ${item} ${tr} > ${log_path}/$l.$w.$r.log"
 }
 
 

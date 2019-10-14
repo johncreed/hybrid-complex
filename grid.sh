@@ -1,17 +1,18 @@
 # Train file path
-train='./octrain'
+train='./train'
 
 # Fixed parameter
 t=50
 wn=1
 k=32
 c=5
+r=0
 
 # Data set
-tr='tr.ffm'
+tr='imp_tr.ffm'
 va='va.ffm'
 item='item.ffm'
-model_name="lalalala"
+model_name="tr.model"
 
 # Log path
 log_path="logs"
@@ -20,22 +21,18 @@ mkdir -p $log_path
 
 task(){
 # Set up fixed parameter and train command
-train_cmd="${train} -t ${t} -wn ${wn} -k ${k} -c ${c} --ns"
+train_cmd="${train} -t ${t} -wn ${wn} -k ${k} -c ${c} -r ${r} --ns"
 
 # Print out all parameter pair
 for l in 4
 do
     for w in 1e-3 1e-4 1e-5
     do
-        for r in -5 -10 -15
-        do
-            cmd=${train_cmd}
-            cmd="${cmd} -l ${l}"
-            cmd="${cmd} -w ${w}"
-            cmd="${cmd} -r ${r}"
-            cmd="${cmd} -imp ${model_name}"
-            echo "${cmd} -p ${va} ${item} ${tr} > ${log_path}/$l.$w.$r.log"
-        done
+        cmd=${train_cmd}
+        cmd="${cmd} -l ${l}"
+        cmd="${cmd} -w ${w}"
+        cmd="${cmd} -imp ${model_name}"
+        echo "${cmd} -p ${va} ${item} ${tr} > ${log_path}/$l.$w.$r.log"
     done
 done
 }
