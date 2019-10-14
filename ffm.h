@@ -101,7 +101,7 @@ public:
     void write_header(ofstream& o_f) const;
     void write_W_and_H(ofstream& o_f) const;
 private:
-    ImpDouble loss, lambda, w, wn, tr_loss;
+    ImpDouble loss, lambda, w, wn, r, tr_loss;
 
     shared_ptr<ImpData> U, Uva, V;
     shared_ptr<Parameter> param;
@@ -117,6 +117,8 @@ private:
     ImpDouble auc = 0;
     ImpDouble L_pos; 
     vector<ImpInt> top_k;
+
+    bool has_imputation_model = false;
     vector<Vec> P_imp, Q_imp;
     ImpInt k_imp, fu_imp, fv_imp, f_imp;
 

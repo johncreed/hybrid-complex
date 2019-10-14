@@ -487,7 +487,10 @@ void ImpProblem::init_y_imp(){
                     if( f1 >= fu_imp || f2 < fu_imp )
                         continue;
                     ImpLong f12 = index_vec(f1, f2, f_imp);
-                    y->val_imp += inner(P_imp[f12].data() + i*k_imp, Q_imp[f12].data() + j*k_imp, k_imp);
+                    if(has_imputation_model)
+                        y->val_imp += inner(P_imp[f12].data() + i*k_imp, Q_imp[f12].data() + j*k_imp, k_imp);
+                    else
+                        y->val_imp = r;
                 }
             }
         }
@@ -501,7 +504,10 @@ void ImpProblem::init_y_imp(){
                     if( f1 >= fu_imp || f2 < fu_imp )
                         continue;
                     ImpLong f12 = index_vec(f1, f2, f_imp);
-                    y->val_imp += inner(P_imp[f12].data() + i*k_imp, Q_imp[f12].data() + j*k_imp, k_imp);
+                    if(has_imputation_model)
+                        y->val_imp += inner(P_imp[f12].data() + i*k_imp, Q_imp[f12].data() + j*k_imp, k_imp);
+                    else
+                        y->val_imp = r;
                 }
             }
         }
@@ -512,6 +518,7 @@ void ImpProblem::init() {
     lambda = param->lambda;
     w = param->omega;
     wn = param->omega_neg;
+    r = param->r;
 
     m = U->m;
     n = V->m;
@@ -844,6 +851,7 @@ void ImpProblem::save_Pva_Qva(string &model_path){
 }
 
 void ImpProblem::load_imputation_model(string &model_imp_path){
+    has_imputation_model = true;
     ifstream ifile(model_imp_path, ios::in | ios::binary);
     ifile.read( reinterpret_cast<char*>(&fu_imp), sizeof(ImpInt) );
     ifile.read( reinterpret_cast<char*>(&fv_imp), sizeof(ImpInt) );
@@ -1424,12 +1432,14 @@ void ImpProblem::gd_neg_cross(const ImpInt &f1, const Vec &Q1, const Vec &W1, Ve
     }
     
     Vec QTQ_imp(k_imp*k, 0), T_imp(m1*k, 0);
-    for (ImpInt al = 0; al < fu_imp; al++) {
-        for (ImpInt be = fu_imp; be < f_imp; be++) {
-            const ImpInt fab = index_vec(al, be, f_imp);
-            const Vec &Qa_imp = Qs_imp[fab], &Pa_imp = Ps_imp[fab];
-            mTm(k_imp, k, n1, Qa_imp.data(), Q1.data(), QTQ_imp.data(), k_imp, k, k, 1);
-            mm(m1, k, k_imp, Pa_imp.data(), QTQ_imp.data(), T_imp.data(), k_imp, k, k, 1);
+    if(has_imputation_model){
+        for (ImpInt al = 0; al < fu_imp; al++) {
+            for (ImpInt be = fu_imp; be < f_imp; be++) {
+                const ImpInt fab = index_vec(al, be, f_imp);
+                const Vec &Qa_imp = Qs_imp[fab], &Pa_imp = Ps_imp[fab];
+                mTm(k_imp, k, n1, Qa_imp.data(), Q1.data(), QTQ_imp.data(), k_imp, k, k, 1);
+                mm(m1, k, k_imp, Pa_imp.data(), QTQ_imp.data(), T_imp.data(), k_imp, k, k, 1);
+            }
         }
     }
 
@@ -1440,18 +1450,38 @@ void ImpProblem::gd_neg_cross(const ImpInt &f1, const Vec &Q1, const Vec &W1, Ve
     const ImpDouble *tp = T.data();
     const ImpDouble *tp_imp = T_imp.data();
 
+    if(has_imputation_model){
+        //cerr << "Do imp\n";
     #pragma omp parallel for schedule(dynamic)
-    for (ImpLong i = 0; i < m1; i++) {
-        const ImpInt id = omp_get_thread_num();
-        const ImpDouble *t1 = tp+i*k;
-        const ImpDouble *t1_imp = tp_imp+i*k;
-        const ImpDouble z_i = a1[i];
-        for (Node* x = X[i]; x < X[i+1]; x++) {
-            const ImpLong idx = x->idx;
-            const ImpDouble val = x->val;
-            for (ImpInt d = 0; d < k; d++) {
-                const ImpLong jd = idx*k+d;
-                G_[jd+id*block_size] += w*(t1[d]-t1_imp[d]+z_i*oQ[d]+bQ[d])*val;
+        for (ImpLong i = 0; i < m1; i++) {
+            const ImpInt id = omp_get_thread_num();
+            const ImpDouble *t1 = tp+i*k;
+            const ImpDouble *t1_imp = tp_imp+i*k;
+            const ImpDouble z_i = a1[i];
+            for (Node* x = X[i]; x < X[i+1]; x++) {
+                const ImpLong idx = x->idx;
+                const ImpDouble val = x->val;
+                for (ImpInt d = 0; d < k; d++) {
+                    const ImpLong jd = idx*k+d;
+                    G_[jd+id*block_size] += w*(t1[d]-t1_imp[d]+z_i*oQ[d]+bQ[d])*val;
+                }
+            }
+        }
+    }
+    else{
+        //cerr << "No imp\n";
+        #pragma omp parallel for schedule(dynamic)
+        for (ImpLong i = 0; i < m1; i++) {
+            const ImpInt id = omp_get_thread_num();
+            const ImpDouble *t1 = tp+i*k;
+            const ImpDouble z_i = a1[i]-r;
+            for (Node* x = X[i]; x < X[i+1]; x++) {
+                const ImpLong idx = x->idx;
+                const ImpDouble val = x->val;
+                for (ImpInt d = 0; d < k; d++) {
+                    const ImpLong jd = idx*k+d;
+                    G_[jd+id*block_size] += w*(t1[d]+z_i*oQ[d]+bQ[d])*val;
+                }
             }
         }
     }
